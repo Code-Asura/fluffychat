@@ -1,0 +1,21 @@
+appId: chat.fluffy.fluffychat
+---
+- assertVisible: "Sign in"
+- tapOn: "Sign in"
+- tapOn: "Search or enter homeserver address"
+- inputText: "http://${HOMESERVER}"
+- tapOn:
+    text: "${HOMESERVER}"
+    index: 1
+- tapOn: "Continue"
+- assertVisible: "Login"
+- inputText: "${USER1_NAME}"
+- tapOn: "Password"
+- inputText: "${USER1_PW}"
+- tapOn: "Login" # Click the login button
+- tapOn: "Copy to clipboard"
+- tapOn: "Next"
+- tapOn: "Accounts and settings" # Open the popup menu
+- tapOn: "Settings"
+- tapOn: "Logout"
+- tapOn: "Logout" # Confirm logout dialog
