@@ -6,6 +6,7 @@ import 'package:matrix/matrix.dart';
 import 'package:slugify/slugify.dart';
 
 import 'package:fluffychat/config/app_config.dart';
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/markdown_context_builder.dart';
@@ -400,6 +401,11 @@ class InputBar extends StatelessWidget {
           onContentInserted: (KeyboardInsertedContent content) {
             final data = content.data;
             if (data == null) return;
+            if (!SecMessConfig.enableChatStaticImages) return;
+            final mimeType = content.mimeType.toLowerCase();
+            if (!mimeType.startsWith('image/') || mimeType == 'image/gif') {
+              return;
+            }
 
             final file = MatrixFile(
               mimeType: content.mimeType,

@@ -7,6 +7,7 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:matrix/matrix.dart';
 import 'package:swipe_to_action/swipe_to_action.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
@@ -175,7 +176,7 @@ class Message extends StatelessWidget {
     var animateIn = this.animateIn;
 
     final sentReactions = <String>{};
-    if (singleSelected) {
+    if (SecMessConfig.enableChatReactions && singleSelected) {
       sentReactions.addAll(
         event
             .aggregatedEvents(timeline, RelationshipTypes.reaction)
@@ -193,10 +194,12 @@ class Message extends StatelessWidget {
       );
     }
 
-    final hasReactions = event.hasAggregatedEvents(
-      timeline,
-      RelationshipTypes.reaction,
-    );
+    final hasReactions =
+        SecMessConfig.enableChatReactions &&
+        event.hasAggregatedEvents(
+          timeline,
+          RelationshipTypes.reaction,
+        );
 
     final threadChildren = event.aggregatedEvents(
       timeline,
@@ -204,7 +207,9 @@ class Message extends StatelessWidget {
     );
 
     final showReactionPicker =
-        singleSelected && event.room.canSendDefaultMessages;
+        SecMessConfig.enableChatReactions &&
+        singleSelected &&
+        event.room.canSendDefaultMessages;
 
     final enterThread = this.enterThread;
     final sender = event.senderFromMemoryOrFallback;

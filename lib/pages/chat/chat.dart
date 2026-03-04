@@ -15,6 +15,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:matrix/matrix.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
@@ -96,6 +97,30 @@ class ChatPageWithRoom extends StatefulWidget {
 
 class ChatController extends State<ChatPageWithRoom>
     with WidgetsBindingObserver {
+  static const Set<String> _allowedStaticImageExtensions = {
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.webp',
+    '.bmp',
+    '.heic',
+    '.heif',
+    '.avif',
+  };
+
+  bool _isAllowedStaticImage(XFile file) {
+    final mimeType = file.mimeType?.toLowerCase();
+    if (mimeType != null && mimeType.isNotEmpty) {
+      return mimeType.startsWith('image/') && mimeType != 'image/gif';
+    }
+    final path = file.path.toLowerCase();
+    return _allowedStaticImageExtensions.any(path.endsWith);
+  }
+
+  List<XFile> _filterAllowedStaticImages(Iterable<XFile> files) => files
+      .where(_isAllowedStaticImage)
+      .toList(growable: false);
+
   Room get room => sendingClient.getRoomById(roomId) ?? widget.room;
 
   late Client sendingClient;
@@ -126,11 +151,14 @@ class ChatController extends State<ChatPageWithRoom>
   Future<void> onDragDone(DropDoneDetails details) async {
     setState(() => dragging = false);
     if (details.files.isEmpty) return;
+    if (!SecMessConfig.enableChatStaticImages) return;
+    final files = _filterAllowedStaticImages(details.files);
+    if (files.isEmpty) return;
 
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendFileDialog(
-        files: details.files,
+        files: files,
         room: room,
         outerContext: context,
         threadRootEventId: activeThreadId,
@@ -290,10 +318,13 @@ class ChatController extends State<ChatPageWithRoom>
       if (item is TextShareItem) room.sendTextEvent(item.value);
       if (item is ContentShareItem) room.sendEvent(item.value);
     }
-    final files = shareItems
+    if (!SecMessConfig.enableChatStaticImages) return;
+    final files = _filterAllowedStaticImages(
+      shareItems
         .whereType<FileShareItem>()
         .map((item) => item.value)
-        .toList();
+        .toList(),
+    );
     if (files.isEmpty) return;
     showAdaptiveDialog(
       context: context,
@@ -636,12 +667,15 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<void> sendFileAction({FileType type = FileType.any}) async {
+    if (!SecMessConfig.enableChatStaticImages) return;
     final files = await selectFiles(context, allowMultiple: true, type: type);
     if (files.isEmpty) return;
+    final staticImageFiles = _filterAllowedStaticImages(files);
+    if (staticImageFiles.isEmpty) return;
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendFileDialog(
-        files: files,
+        files: staticImageFiles,
         room: room,
         outerContext: context,
         threadRootEventId: activeThreadId,
@@ -651,6 +685,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<void> sendImageFromClipBoard(Uint8List? image) async {
+    if (!SecMessConfig.enableChatStaticImages) return;
     if (image == null) return;
     await showAdaptiveDialog(
       context: context,
@@ -665,6 +700,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<void> openCameraAction() async {
+    if (!SecMessConfig.enableChatStaticImages) return;
     // Make sure the textfield is unfocused before opening the camera
     FocusScope.of(context).requestFocus(FocusNode());
     final file = await ImagePicker().pickImage(source: ImageSource.camera);
@@ -683,6 +719,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<void> openVideoCameraAction() async {
+    if (!SecMessConfig.enableChatVideos) return;
     // Make sure the textfield is unfocused before opening the camera
     FocusScope.of(context).requestFocus(FocusNode());
     final file = await ImagePicker().pickVideo(
@@ -709,6 +746,7 @@ class ChatController extends State<ChatPageWithRoom>
     List<int> waveform,
     String? fileName,
   ) async {
+    if (!SecMessConfig.enableChatVoiceMessages) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final audioFile = XFile(path);
 
@@ -770,6 +808,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<void> sendLocationAction() async {
+    if (!SecMessConfig.enableChatLocation) return;
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendLocationDialog(room: room),
@@ -1203,27 +1242,34 @@ class ChatController extends State<ChatPageWithRoom>
 
     switch (choice) {
       case AddPopupMenuActions.image:
+        if (!SecMessConfig.enableChatStaticImages) return;
         sendFileAction(type: FileType.image);
         return;
       case AddPopupMenuActions.video:
+        if (!SecMessConfig.enableChatVideos) return;
         sendFileAction(type: FileType.video);
         return;
       case AddPopupMenuActions.file:
+        if (!SecMessConfig.enableChatFileAttachments) return;
         sendFileAction();
         return;
       case AddPopupMenuActions.poll:
+        if (!SecMessConfig.enableChatPolls) return;
         showAdaptiveBottomSheet(
           context: context,
           builder: (context) => StartPollBottomSheet(room: room),
         );
         return;
       case AddPopupMenuActions.photoCamera:
+        if (!SecMessConfig.enableChatStaticImages) return;
         openCameraAction();
         return;
       case AddPopupMenuActions.videoCamera:
+        if (!SecMessConfig.enableChatVideos) return;
         openVideoCameraAction();
         return;
       case AddPopupMenuActions.location:
+        if (!SecMessConfig.enableChatLocation) return;
         sendLocationAction();
         return;
     }

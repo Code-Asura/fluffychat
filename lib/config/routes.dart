@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/pages/archive/archive.dart';
 import 'package:fluffychat/pages/bootstrap/bootstrap_dialog.dart';
@@ -19,9 +19,9 @@ import 'package:fluffychat/pages/chat_search/chat_search_page.dart';
 import 'package:fluffychat/pages/device_settings/device_settings.dart';
 import 'package:fluffychat/pages/intro/intro_page_presenter.dart';
 import 'package:fluffychat/pages/invitation_selection/invitation_selection.dart';
-import 'package:fluffychat/pages/login/login.dart';
 import 'package:fluffychat/pages/new_group/new_group.dart';
 import 'package:fluffychat/pages/new_private_chat/new_private_chat.dart';
+import 'package:fluffychat/pages/qr_login/qr_login_page.dart';
 import 'package:fluffychat/pages/settings/settings.dart';
 import 'package:fluffychat/pages/settings_3pid/settings_3pid.dart';
 import 'package:fluffychat/pages/settings_chat/settings_chat.dart';
@@ -32,7 +32,6 @@ import 'package:fluffychat/pages/settings_notifications/settings_notifications.d
 import 'package:fluffychat/pages/settings_password/settings_password.dart';
 import 'package:fluffychat/pages/settings_security/settings_security.dart';
 import 'package:fluffychat/pages/settings_style/settings_style.dart';
-import 'package:fluffychat/pages/sign_in/sign_in_page.dart';
 import 'package:fluffychat/widgets/config_viewer.dart';
 import 'package:fluffychat/widgets/layouts/empty_page.dart';
 import 'package:fluffychat/widgets/layouts/two_column_layout.dart';
@@ -72,25 +71,28 @@ abstract class AppRoutes {
       redirect: loggedInRedirect,
       routes: [
         GoRoute(
+          path: 'qr_login',
+          pageBuilder: (context, state) =>
+              defaultPageBuilder(context, state, const QrLoginPage()),
+          redirect: loggedInRedirect,
+        ),
+        GoRoute(
           path: 'sign_in',
           pageBuilder: (context, state) =>
-              defaultPageBuilder(context, state, SignInPage(signUp: false)),
-          redirect: loggedInRedirect,
+              defaultPageBuilder(context, state, const QrLoginPage()),
+          redirect: (context, state) => '/home/qr_login',
         ),
         GoRoute(
           path: 'sign_up',
           pageBuilder: (context, state) =>
-              defaultPageBuilder(context, state, SignInPage(signUp: true)),
-          redirect: loggedInRedirect,
+              defaultPageBuilder(context, state, const QrLoginPage()),
+          redirect: (context, state) => '/home/qr_login',
         ),
         GoRoute(
           path: 'login',
-          pageBuilder: (context, state) => defaultPageBuilder(
-            context,
-            state,
-            Login(client: state.extra as Client),
-          ),
-          redirect: loggedInRedirect,
+          pageBuilder: (context, state) =>
+              defaultPageBuilder(context, state, const QrLoginPage()),
+          redirect: (context, state) => '/home/qr_login',
         ),
       ],
     ),
@@ -193,7 +195,12 @@ abstract class AppRoutes {
                   spaceId: state.uri.queryParameters['space_id'],
                 ),
               ),
-              redirect: loggedOutRedirect,
+              redirect: (context, state) {
+                if (!SecMessConfig.enableSpaces) {
+                  return '/rooms';
+                }
+                return loggedOutRedirect(context, state);
+              },
             ),
             ShellRoute(
               pageBuilder: (context, state, child) => defaultPageBuilder(
@@ -268,41 +275,17 @@ abstract class AppRoutes {
                     ),
                     GoRoute(
                       path: 'addaccount',
-                      redirect: loggedOutRedirect,
+                      redirect: (context, state) {
+                        if (!SecMessConfig.enableMultiAccount) {
+                          return '/rooms/settings';
+                        }
+                        return loggedOutRedirect(context, state);
+                      },
                       pageBuilder: (context, state) => defaultPageBuilder(
                         context,
                         state,
-                        const IntroPagePresenter(),
+                        const QrLoginPage(),
                       ),
-                      routes: [
-                        GoRoute(
-                          path: 'sign_in',
-                          pageBuilder: (context, state) => defaultPageBuilder(
-                            context,
-                            state,
-                            SignInPage(signUp: false),
-                          ),
-                          redirect: loggedOutRedirect,
-                        ),
-                        GoRoute(
-                          path: 'sign_up',
-                          pageBuilder: (context, state) => defaultPageBuilder(
-                            context,
-                            state,
-                            SignInPage(signUp: true),
-                          ),
-                          redirect: loggedOutRedirect,
-                        ),
-                        GoRoute(
-                          path: 'login',
-                          pageBuilder: (context, state) => defaultPageBuilder(
-                            context,
-                            state,
-                            Login(client: state.extra as Client),
-                          ),
-                          redirect: loggedOutRedirect,
-                        ),
-                      ],
                     ),
                     GoRoute(
                       path: 'homeserver',
@@ -313,7 +296,12 @@ abstract class AppRoutes {
                           const SettingsHomeserver(),
                         );
                       },
-                      redirect: loggedOutRedirect,
+                      redirect: (context, state) {
+                        if (!SecMessConfig.enableHomeserverSettings) {
+                          return '/rooms/settings';
+                        }
+                        return loggedOutRedirect(context, state);
+                      },
                     ),
                     GoRoute(
                       path: 'security',

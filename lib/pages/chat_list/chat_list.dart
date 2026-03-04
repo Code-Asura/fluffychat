@@ -11,6 +11,7 @@ import 'package:matrix/matrix.dart' as sdk;
 import 'package:matrix/matrix.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat_list/chat_list_view.dart';
 import 'package:fluffychat/utils/localized_exception_extension.dart';
@@ -29,7 +30,7 @@ import '../../config/setting_keys.dart';
 import '../../utils/url_launcher.dart';
 import '../../widgets/matrix.dart';
 
-enum ActiveFilter { allChats, messages, groups, unread, spaces }
+enum ActiveFilter { allChats, messages, groups, unread }
 
 extension LocalizedActiveFilter on ActiveFilter {
   String toLocalizedString(BuildContext context) {
@@ -42,8 +43,6 @@ extension LocalizedActiveFilter on ActiveFilter {
         return L10n.of(context).unread;
       case ActiveFilter.groups:
         return L10n.of(context).groups;
-      case ActiveFilter.spaces:
-        return L10n.of(context).spaces;
     }
   }
 }
@@ -79,6 +78,9 @@ class ChatListController extends State<ChatList>
   String? get activeSpaceId => _activeSpaceId;
 
   Future<void> setActiveSpace(String spaceId) async {
+    if (!SecMessConfig.enableSpaces) {
+      return;
+    }
     await Matrix.of(context).client.getRoomById(spaceId)!.postLoad();
 
     setState(() {
@@ -120,6 +122,9 @@ class ChatListController extends State<ChatList>
     }
 
     if (room.isSpace) {
+      if (!SecMessConfig.enableSpaces) {
+        return;
+      }
       setActiveSpace(room.id);
       return;
     }
@@ -130,15 +135,15 @@ class ChatListController extends State<ChatList>
   bool Function(Room) getRoomFilterByActiveFilter(ActiveFilter activeFilter) {
     switch (activeFilter) {
       case ActiveFilter.allChats:
-        return (room) => true;
+        return (room) => SecMessConfig.enableSpaces || !room.isSpace;
       case ActiveFilter.messages:
         return (room) => !room.isSpace && room.isDirectChat;
       case ActiveFilter.groups:
         return (room) => !room.isSpace && !room.isDirectChat;
       case ActiveFilter.unread:
-        return (room) => room.isUnreadOrInvited;
-      case ActiveFilter.spaces:
-        return (room) => room.isSpace;
+        return (room) =>
+            room.isUnreadOrInvited &&
+            (SecMessConfig.enableSpaces || !room.isSpace);
     }
   }
 
@@ -300,8 +305,9 @@ class ChatListController extends State<ChatList>
   }
 
   // Needs to match GroupsSpacesEntry for 'separate group' checking.
-  List<Room> get spaces =>
-      Matrix.of(context).client.rooms.where((r) => r.isSpace).toList();
+  List<Room> get spaces => SecMessConfig.enableSpaces
+      ? Matrix.of(context).client.rooms.where((r) => r.isSpace).toList()
+      : const [];
 
   String? get activeChat => widget.activeChat;
 
@@ -424,14 +430,16 @@ class ChatListController extends State<ChatList>
       MatrixLocals(L10n.of(context)),
     );
 
-    final spacesWithPowerLevels = room.client.rooms
-        .where(
-          (space) =>
-              space.isSpace &&
-              space.canChangeStateEvent(EventTypes.SpaceChild) &&
-              !space.spaceChildren.any((c) => c.roomId == room.id),
-        )
-        .toList();
+    final spacesWithPowerLevels = SecMessConfig.enableSpaces
+        ? room.client.rooms
+              .where(
+                (space) =>
+                    space.isSpace &&
+                    space.canChangeStateEvent(EventTypes.SpaceChild) &&
+                    !space.spaceChildren.any((c) => c.roomId == room.id),
+              )
+              .toList()
+        : const <Room>[];
 
     final action = await showMenu<ChatContextAction>(
       context: posContext,

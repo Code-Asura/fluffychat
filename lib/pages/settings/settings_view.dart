@@ -5,6 +5,7 @@ import 'package:matrix/matrix.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:fluffychat/config/app_config.dart';
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/fluffy_share.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
@@ -185,18 +186,19 @@ class SettingsView extends StatelessWidget {
                   : null,
             ),
             Divider(color: theme.dividerColor),
-            ListTile(
-              leading: const Icon(Icons.dns_outlined),
-              title: Text(
-                L10n.of(context).aboutHomeserver(
-                  Matrix.of(context).client.userID?.domain ?? 'homeserver',
+            if (SecMessConfig.enableHomeserverSettings)
+              ListTile(
+                leading: const Icon(Icons.dns_outlined),
+                title: Text(
+                  L10n.of(context).aboutHomeserver(
+                    Matrix.of(context).client.userID?.domain ?? 'homeserver',
+                  ),
                 ),
+                onTap: () => context.go('/rooms/settings/homeserver'),
+                tileColor: activeRoute.startsWith('/rooms/settings/homeserver')
+                    ? theme.colorScheme.surfaceContainerHigh
+                    : null,
               ),
-              onTap: () => context.go('/rooms/settings/homeserver'),
-              tileColor: activeRoute.startsWith('/rooms/settings/homeserver')
-                  ? theme.colorScheme.surfaceContainerHigh
-                  : null,
-            ),
             ListTile(
               leading: const Icon(Icons.privacy_tip_outlined),
               title: Text(L10n.of(context).privacy),

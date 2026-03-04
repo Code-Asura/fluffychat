@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
@@ -57,43 +58,47 @@ class SettingsChatView extends StatelessWidget {
                 title: L10n.of(context).swipeRightToLeftToReply,
                 setting: AppSettings.swipeRightToLeftToReply,
               ),
-              Divider(color: theme.dividerColor),
-              ListTile(
-                title: Text(
-                  L10n.of(context).customEmojisAndStickers,
-                  style: TextStyle(
-                    color: theme.colorScheme.secondary,
-                    fontWeight: FontWeight.bold,
+              if (SecMessConfig.enableChatStickers) ...[
+                Divider(color: theme.dividerColor),
+                ListTile(
+                  title: Text(
+                    L10n.of(context).customEmojisAndStickers,
+                    style: TextStyle(
+                      color: theme.colorScheme.secondary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              ListTile(
-                title: Text(L10n.of(context).customEmojisAndStickers),
-                subtitle: Text(L10n.of(context).customEmojisAndStickersBody),
-                onTap: () => context.go('/rooms/settings/chat/emotes'),
-                trailing: const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Icon(Icons.chevron_right_outlined),
-                ),
-              ),
-              Divider(color: theme.dividerColor),
-              ListTile(
-                title: Text(
-                  L10n.of(context).calls,
-                  style: TextStyle(
-                    color: theme.colorScheme.secondary,
-                    fontWeight: FontWeight.bold,
+                ListTile(
+                  title: Text(L10n.of(context).customEmojisAndStickers),
+                  subtitle: Text(L10n.of(context).customEmojisAndStickersBody),
+                  onTap: () => context.go('/rooms/settings/chat/emotes'),
+                  trailing: const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Icon(Icons.chevron_right_outlined),
                   ),
                 ),
-              ),
-              SettingsSwitchListTile.adaptive(
-                title: L10n.of(context).experimentalVideoCalls,
-                onChanged: (b) {
-                  Matrix.of(context).createVoipPlugin();
-                  return;
-                },
-                setting: AppSettings.experimentalVoip,
-              ),
+              ],
+              if (SecMessConfig.enableCalls) ...[
+                Divider(color: theme.dividerColor),
+                ListTile(
+                  title: Text(
+                    L10n.of(context).calls,
+                    style: TextStyle(
+                      color: theme.colorScheme.secondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                SettingsSwitchListTile.adaptive(
+                  title: L10n.of(context).experimentalVideoCalls,
+                  onChanged: (b) {
+                    Matrix.of(context).createVoipPlugin();
+                    return;
+                  },
+                  setting: AppSettings.experimentalVoip,
+                ),
+              ],
             ],
           ),
         ),

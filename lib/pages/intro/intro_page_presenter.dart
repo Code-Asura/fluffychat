@@ -11,10 +11,8 @@ import 'package:universal_html/universal_html.dart' as web;
 
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/pages/intro/intro_page.dart';
-import 'package:fluffychat/pages/sign_in/view_model/model/public_homeserver_data.dart';
 import 'package:fluffychat/utils/localized_exception_extension.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/oidc_session_json_extension.dart';
-import 'package:fluffychat/utils/sign_in_flows/check_homeserver.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 
 class IntroPagePresenter extends StatefulWidget {
@@ -93,27 +91,13 @@ class _IntroPagePresenterState extends State<IntroPagePresenter> {
     }
   }
 
-  void _login() {
-    final presetHomeserver = AppSettings.presetHomeserver.value;
-    if (presetHomeserver.isEmpty) {
-      context.go('${GoRouterState.of(context).uri.path}/sign_in');
-      return;
-    }
-
-    connectToHomeserverFlow(
-      PublicHomeserverData(name: presetHomeserver),
-      context,
-      (snapshot) {},
-      false,
-    );
-  }
+  void _login() => context.go('${GoRouterState.of(context).uri.path}/qr_login');
 
   @override
   Widget build(BuildContext context) {
     return IntroPage(
       isLoading: isLoading,
       loggingInToHomeserver: loggingInToHomeserver,
-      hasPresetHomeserver: AppSettings.presetHomeserver.value.isNotEmpty,
       welcomeText: AppSettings.welcomeText.value.isEmpty
           ? null
           : AppSettings.welcomeText.value,

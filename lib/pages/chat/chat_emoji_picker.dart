@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:matrix/matrix.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat/sticker_picker_dialog.dart';
@@ -15,23 +16,24 @@ class ChatEmojiPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    const showStickerTab = SecMessConfig.enableChatStickers;
     return AnimatedContainer(
       duration: FluffyThemes.animationDuration,
       curve: FluffyThemes.animationCurve,
       clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(),
-      height: controller.showEmojiPicker
+      height: controller.showEmojiPicker && SecMessConfig.enableChatEmojiPicker
           ? MediaQuery.sizeOf(context).height / 2
           : 0,
-      child: controller.showEmojiPicker
+      child: controller.showEmojiPicker && SecMessConfig.enableChatEmojiPicker
           ? DefaultTabController(
-              length: 2,
+              length: showStickerTab ? 2 : 1,
               child: Column(
                 children: [
                   TabBar(
                     tabs: [
                       Tab(text: L10n.of(context).emojis),
-                      Tab(text: L10n.of(context).stickers),
+                      if (showStickerTab) Tab(text: L10n.of(context).stickers),
                     ],
                   ),
                   Expanded(
@@ -69,22 +71,23 @@ class ChatEmojiPicker extends StatelessWidget {
                             ),
                           ),
                         ),
-                        StickerPickerDialog(
-                          room: controller.room,
-                          onSelected: (sticker) {
-                            controller.room.sendEvent(
-                              {
-                                'body': sticker.body,
-                                'info': sticker.info ?? {},
-                                'url': sticker.url.toString(),
-                              },
-                              type: EventTypes.Sticker,
-                              threadRootEventId: controller.activeThreadId,
-                              threadLastEventId: controller.threadLastEventId,
-                            );
-                            controller.hideEmojiPicker();
-                          },
-                        ),
+                        if (showStickerTab)
+                          StickerPickerDialog(
+                            room: controller.room,
+                            onSelected: (sticker) {
+                              controller.room.sendEvent(
+                                {
+                                  'body': sticker.body,
+                                  'info': sticker.info ?? {},
+                                  'url': sticker.url.toString(),
+                                },
+                                type: EventTypes.Sticker,
+                                threadRootEventId: controller.activeThreadId,
+                                threadLastEventId: controller.threadLastEventId,
+                              );
+                              controller.hideEmojiPicker();
+                            },
+                          ),
                       ],
                     ),
                   ),

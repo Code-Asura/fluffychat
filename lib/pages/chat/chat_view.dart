@@ -6,6 +6,7 @@ import 'package:badges/badges.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:matrix/matrix.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
@@ -224,7 +225,8 @@ class ChatView extends StatelessWidget {
                         ],
                       ),
                   ] else if (!controller.room.isArchived) ...[
-                    if (AppSettings.experimentalVoip.value &&
+                    if (SecMessConfig.enableCalls &&
+                        AppSettings.experimentalVoip.value &&
                         Matrix.of(context).voipPlugin != null &&
                         controller.room.isDirectChat)
                       IconButton(

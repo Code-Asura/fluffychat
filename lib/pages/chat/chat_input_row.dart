@@ -4,6 +4,7 @@ import 'package:animations/animations.dart';
 import 'package:emoji_picker_flutter/locales/default_emoji_set_locale.dart';
 import 'package:matrix/matrix.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat/recording_input_row.dart';
@@ -48,6 +49,16 @@ class ChatInputRow extends StatelessWidget {
     final selectedTextButtonStyle = TextButton.styleFrom(
       foregroundColor: theme.colorScheme.onTertiaryContainer,
     );
+    final hasAttachmentMenuActions =
+        SecMessConfig.enableChatStaticImages ||
+        SecMessConfig.enableChatVideos ||
+        SecMessConfig.enableChatFileAttachments ||
+        SecMessConfig.enableChatPolls ||
+        (PlatformInfos.isMobile && SecMessConfig.enableChatLocation);
+    final hasCameraMenuActions =
+        PlatformInfos.isMobile &&
+        (SecMessConfig.enableChatStaticImages ||
+            SecMessConfig.enableChatVideos);
 
     return RecordingViewModel(
       builder: (context, recordingViewModel) {
@@ -133,7 +144,7 @@ class ChatInputRow extends StatelessWidget {
                   AnimatedContainer(
                     duration: FluffyThemes.animationDuration,
                     curve: FluffyThemes.animationCurve,
-                    width: textMessageOnly ? 0 : 48,
+                    width: textMessageOnly || !hasAttachmentMenuActions ? 0 : 48,
                     height: height,
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(),
@@ -144,7 +155,8 @@ class ChatInputRow extends StatelessWidget {
                       iconColor: theme.colorScheme.onPrimaryContainer,
                       onSelected: controller.onAddPopupMenuButtonSelected,
                       itemBuilder: (BuildContext context) => [
-                        if (PlatformInfos.isMobile)
+                        if (PlatformInfos.isMobile &&
+                            SecMessConfig.enableChatLocation)
                           PopupMenuItem(
                             value: AddPopupMenuActions.location,
                             child: ListTile(
@@ -159,64 +171,68 @@ class ChatInputRow extends StatelessWidget {
                               contentPadding: const EdgeInsets.all(0),
                             ),
                           ),
-                        PopupMenuItem(
-                          value: AddPopupMenuActions.poll,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              child: const Icon(Icons.poll_outlined),
-                            ),
-                            title: Text(L10n.of(context).startPoll),
-                            contentPadding: const EdgeInsets.all(0),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: AddPopupMenuActions.image,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              child: const Icon(Icons.photo_outlined),
-                            ),
-                            title: Text(L10n.of(context).sendImage),
-                            contentPadding: const EdgeInsets.all(0),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: AddPopupMenuActions.video,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              child: const Icon(
-                                Icons.video_camera_back_outlined,
+                        if (SecMessConfig.enableChatPolls)
+                          PopupMenuItem(
+                            value: AddPopupMenuActions.poll,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    theme.colorScheme.onPrimaryContainer,
+                                foregroundColor:
+                                    theme.colorScheme.primaryContainer,
+                                child: const Icon(Icons.poll_outlined),
                               ),
+                              title: Text(L10n.of(context).startPoll),
+                              contentPadding: const EdgeInsets.all(0),
                             ),
-                            title: Text(L10n.of(context).sendVideo),
-                            contentPadding: const EdgeInsets.all(0),
                           ),
-                        ),
-                        PopupMenuItem(
-                          value: AddPopupMenuActions.file,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              child: const Icon(Icons.attachment_outlined),
+                        if (SecMessConfig.enableChatStaticImages)
+                          PopupMenuItem(
+                            value: AddPopupMenuActions.image,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    theme.colorScheme.onPrimaryContainer,
+                                foregroundColor:
+                                    theme.colorScheme.primaryContainer,
+                                child: const Icon(Icons.photo_outlined),
+                              ),
+                              title: Text(L10n.of(context).sendImage),
+                              contentPadding: const EdgeInsets.all(0),
                             ),
-                            title: Text(L10n.of(context).sendFile),
-                            contentPadding: const EdgeInsets.all(0),
                           ),
-                        ),
+                        if (SecMessConfig.enableChatVideos)
+                          PopupMenuItem(
+                            value: AddPopupMenuActions.video,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    theme.colorScheme.onPrimaryContainer,
+                                foregroundColor:
+                                    theme.colorScheme.primaryContainer,
+                                child: const Icon(
+                                  Icons.video_camera_back_outlined,
+                                ),
+                              ),
+                              title: Text(L10n.of(context).sendVideo),
+                              contentPadding: const EdgeInsets.all(0),
+                            ),
+                          ),
+                        if (SecMessConfig.enableChatFileAttachments)
+                          PopupMenuItem(
+                            value: AddPopupMenuActions.file,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    theme.colorScheme.onPrimaryContainer,
+                                foregroundColor:
+                                    theme.colorScheme.primaryContainer,
+                                child: const Icon(Icons.attachment_outlined),
+                              ),
+                              title: Text(L10n.of(context).sendFile),
+                              contentPadding: const EdgeInsets.all(0),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -224,7 +240,7 @@ class ChatInputRow extends StatelessWidget {
                     AnimatedContainer(
                       duration: FluffyThemes.animationDuration,
                       curve: FluffyThemes.animationCurve,
-                      width: textMessageOnly ? 0 : 48,
+                      width: textMessageOnly || !hasCameraMenuActions ? 0 : 48,
                       height: height,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(),
@@ -235,69 +251,73 @@ class ChatInputRow extends StatelessWidget {
                         onSelected: controller.onAddPopupMenuButtonSelected,
                         iconColor: theme.colorScheme.onPrimaryContainer,
                         itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: AddPopupMenuActions.videoCamera,
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                child: const Icon(Icons.videocam_outlined),
+                          if (SecMessConfig.enableChatVideos)
+                            PopupMenuItem(
+                              value: AddPopupMenuActions.videoCamera,
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor:
+                                      theme.colorScheme.onPrimaryContainer,
+                                  foregroundColor:
+                                      theme.colorScheme.primaryContainer,
+                                  child: const Icon(Icons.videocam_outlined),
+                                ),
+                                title: Text(L10n.of(context).recordAVideo),
+                                contentPadding: const EdgeInsets.all(0),
                               ),
-                              title: Text(L10n.of(context).recordAVideo),
-                              contentPadding: const EdgeInsets.all(0),
                             ),
-                          ),
-                          PopupMenuItem(
-                            value: AddPopupMenuActions.photoCamera,
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                child: const Icon(Icons.camera_alt_outlined),
+                          if (SecMessConfig.enableChatStaticImages)
+                            PopupMenuItem(
+                              value: AddPopupMenuActions.photoCamera,
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor:
+                                      theme.colorScheme.onPrimaryContainer,
+                                  foregroundColor:
+                                      theme.colorScheme.primaryContainer,
+                                  child: const Icon(Icons.camera_alt_outlined),
+                                ),
+                                title: Text(L10n.of(context).takeAPhoto),
+                                contentPadding: const EdgeInsets.all(0),
                               ),
-                              title: Text(L10n.of(context).takeAPhoto),
-                              contentPadding: const EdgeInsets.all(0),
                             ),
-                          ),
                         ],
                       ),
                     ),
-                  Container(
-                    height: height,
-                    width: 48,
-                    alignment: Alignment.center,
-                    child: IconButton(
-                      tooltip: L10n.of(context).emojis,
-                      color: theme.colorScheme.onPrimaryContainer,
-                      icon: PageTransitionSwitcher(
-                        transitionBuilder:
-                            (
-                              Widget child,
-                              Animation<double> primaryAnimation,
-                              Animation<double> secondaryAnimation,
-                            ) {
-                              return SharedAxisTransition(
-                                animation: primaryAnimation,
-                                secondaryAnimation: secondaryAnimation,
-                                transitionType: SharedAxisTransitionType.scaled,
-                                fillColor: Colors.transparent,
-                                child: child,
-                              );
-                            },
-                        child: Icon(
-                          controller.showEmojiPicker
-                              ? Icons.keyboard
-                              : Icons.add_reaction_outlined,
-                          key: ValueKey(controller.showEmojiPicker),
+                  if (SecMessConfig.enableChatEmojiPicker)
+                    Container(
+                      height: height,
+                      width: 48,
+                      alignment: Alignment.center,
+                      child: IconButton(
+                        tooltip: L10n.of(context).emojis,
+                        color: theme.colorScheme.onPrimaryContainer,
+                        icon: PageTransitionSwitcher(
+                          transitionBuilder:
+                              (
+                                Widget child,
+                                Animation<double> primaryAnimation,
+                                Animation<double> secondaryAnimation,
+                              ) {
+                                return SharedAxisTransition(
+                                  animation: primaryAnimation,
+                                  secondaryAnimation: secondaryAnimation,
+                                  transitionType:
+                                      SharedAxisTransitionType.scaled,
+                                  fillColor: Colors.transparent,
+                                  child: child,
+                                );
+                              },
+                          child: Icon(
+                            controller.showEmojiPicker
+                                ? Icons.keyboard
+                                : Icons.add_reaction_outlined,
+                            key: ValueKey(controller.showEmojiPicker),
+                          ),
                         ),
+                        onPressed: controller.emojiPickerAction,
                       ),
-                      onPressed: controller.emojiPickerAction,
                     ),
-                  ),
                   if (Matrix.of(context).isMultiAccount &&
                       Matrix.of(context).hasComplexBundles &&
                       Matrix.of(context).currentBundle!.length > 1)
@@ -360,7 +380,8 @@ class ChatInputRow extends StatelessWidget {
                     width: height,
                     alignment: Alignment.center,
                     child:
-                        PlatformInfos.platformCanRecord &&
+                        SecMessConfig.enableChatVoiceMessages &&
+                            PlatformInfos.platformCanRecord &&
                             !controller.sendController.text.isNotEmpty &&
                             controller.editEvent == null
                         ? HoverBuilder(

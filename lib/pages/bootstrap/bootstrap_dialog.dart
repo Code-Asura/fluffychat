@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/error_reporter.dart';
@@ -504,9 +505,9 @@ class BootstrapDialogState extends State<BootstrapDialog> {
         case BootstrapState.askSetupCrossSigning:
           WidgetsBinding.instance.addPostFrameCallback(
             (_) => bootstrap.askSetupCrossSigning(
-              setupMasterKey: true,
-              setupSelfSigningKey: true,
-              setupUserSigningKey: true,
+              setupMasterKey: !SecMessConfig.skipBootstrapCrossSigning,
+              setupSelfSigningKey: !SecMessConfig.skipBootstrapCrossSigning,
+              setupUserSigningKey: !SecMessConfig.skipBootstrapCrossSigning,
             ),
           );
           break;

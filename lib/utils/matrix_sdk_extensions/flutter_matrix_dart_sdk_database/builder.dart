@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ffi';
 
 import 'package:flutter/foundation.dart';
 
@@ -6,6 +7,7 @@ import 'package:matrix/matrix.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqlite3/open.dart';
 import 'package:universal_html/html.dart' as html;
 
 import 'package:fluffychat/l10n/l10n.dart';
@@ -15,6 +17,32 @@ import 'cipher.dart';
 
 import 'sqlcipher_stub.dart'
     if (dart.library.io) 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
+
+void _ffiInitSqlCipherWindowsFallback() =>
+    open.overrideForAll(_loadWindowsSqlCipherLibrary);
+
+DynamicLibrary _loadWindowsSqlCipherLibrary() {
+  Object? lastError;
+  StackTrace? lastStackTrace;
+
+  for (final candidate in const ['libsqlcipher.dll', 'sqlite3.dll']) {
+    try {
+      return DynamicLibrary.open(candidate);
+    } catch (e, s) {
+      lastError = e;
+      lastStackTrace = s;
+      Logs().w('Unable to load "$candidate". Trying next fallback...', e, s);
+    }
+  }
+
+  Error.throwWithStackTrace(
+    StateError(
+      'Unable to load SQLCipher library on Windows. '
+      'Tried: libsqlcipher.dll, sqlite3.dll. Last error: $lastError',
+    ),
+    lastStackTrace ?? StackTrace.current,
+  );
+}
 
 Future<DatabaseApi> flutterMatrixSdkDatabaseBuilder(String clientName) async {
   MatrixSdkDatabase? database;
@@ -77,9 +105,10 @@ Future<MatrixSdkDatabase> _constructDatabase(String clientName) async {
   // fix dlopen for old Android
   await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
   // import the SQLite / SQLCipher shared objects / dynamic libraries
-  final factory = createDatabaseFactoryFfi(
-    ffiInit: SQfLiteEncryptionHelper.ffiInit,
-  );
+  final ffiInit = Platform.isWindows
+      ? _ffiInitSqlCipherWindowsFallback
+      : SQfLiteEncryptionHelper.ffiInit;
+  final factory = createDatabaseFactoryFfi(ffiInit: ffiInit);
 
   // required for [getDatabasesPath]
   databaseFactory = factory;

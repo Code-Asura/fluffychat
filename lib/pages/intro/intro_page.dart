@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_linkify/flutter_linkify.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -13,7 +12,7 @@ import 'package:fluffychat/widgets/layouts/login_scaffold.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 
 class IntroPage extends StatelessWidget {
-  final bool isLoading, hasPresetHomeserver;
+  final bool isLoading;
   final String? loggingInToHomeserver, welcomeText;
   final VoidCallback login;
 
@@ -21,7 +20,6 @@ class IntroPage extends StatelessWidget {
     required this.isLoading,
     required this.loggingInToHomeserver,
     super.key,
-    required this.hasPresetHomeserver,
     required this.welcomeText,
     required this.login,
   });
@@ -142,42 +140,11 @@ class IntroPage extends StatelessWidget {
                               mainAxisSize: .min,
                               crossAxisAlignment: .stretch,
                               children: [
-                                if (!hasPresetHomeserver)
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          theme.colorScheme.secondary,
-                                      foregroundColor:
-                                          theme.colorScheme.onSecondary,
-                                    ),
-                                    onPressed: () => context.go(
-                                      '${GoRouterState.of(context).uri.path}/sign_up',
-                                    ),
-                                    child: Text(
-                                      L10n.of(context).createNewAccount,
-                                    ),
-                                  ),
-                                SizedBox(height: 16),
-                                ElevatedButton(
+                                ElevatedButton.icon(
                                   onPressed: login,
-                                  child: Text(L10n.of(context).signIn),
+                                  icon: const Icon(Icons.qr_code_scanner),
+                                  label: Text(L10n.of(context).scanQrCode),
                                 ),
-
-                                if (!hasPresetHomeserver)
-                                  TextButton(
-                                    onPressed: () async {
-                                      final client = await Matrix.of(
-                                        context,
-                                      ).getLoginClient();
-                                      context.go(
-                                        '${GoRouterState.of(context).uri.path}/login',
-                                        extra: client,
-                                      );
-                                    },
-                                    child: Text(
-                                      L10n.of(context).loginWithMatrixId,
-                                    ),
-                                  ),
                               ],
                             ),
                           ),

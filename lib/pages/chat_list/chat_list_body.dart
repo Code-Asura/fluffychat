@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat_list/chat_list.dart';
@@ -11,6 +12,7 @@ import 'package:fluffychat/pages/chat_list/dummy_chat_list_item.dart';
 import 'package:fluffychat/pages/chat_list/search_title.dart';
 import 'package:fluffychat/pages/chat_list/space_view.dart';
 import 'package:fluffychat/pages/chat_list/status_msg_list.dart';
+import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:fluffychat/utils/stream_extension.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/public_room_dialog.dart';
 import 'package:fluffychat/widgets/avatar.dart';
@@ -39,7 +41,9 @@ class ChatListViewBody extends StatelessWidget {
         activeChat: controller.activeChat,
       );
     }
-    final spaces = client.rooms.where((r) => r.isSpace);
+    final spaces = SecMessConfig.enableSpaces
+        ? client.rooms.where((room) => room.isSpace)
+        : const Iterable<Room>.empty();
     final spaceDelegateCandidates = <String, Room>{};
     for (final space in spaces) {
       for (final spaceChild in space.spaceChildren) {
@@ -56,6 +60,7 @@ class ChatListViewBody extends StatelessWidget {
         .where((room) => room.roomType == 'm.space')
         .toList();
     final userSearchResult = controller.userSearchResult;
+    final useVerticalUserSearch = PlatformInfos.isDesktop;
     const dummyChatCount = 4;
     final filter = controller.searchController.text.toLowerCase();
     return StreamBuilder(
@@ -70,10 +75,14 @@ class ChatListViewBody extends StatelessWidget {
           child: CustomScrollView(
             controller: controller.scrollController,
             slivers: [
-              ChatListHeader(controller: controller),
+              ChatListHeader(
+                controller: controller,
+                globalSearch: SecMessConfig.enablePublicSearch,
+              ),
               SliverList(
                 delegate: SliverChildListDelegate([
-                  if (controller.isSearchMode) ...[
+                  if (controller.isSearchMode &&
+                      SecMessConfig.enablePublicSearch) ...[
                     SearchTitle(
                       title: L10n.of(context).publicRooms,
                       icon: const Icon(Icons.explore_outlined),
@@ -95,11 +104,40 @@ class ChatListViewBody extends StatelessWidget {
                           userSearchResult == null ||
                               userSearchResult.results.isEmpty
                           ? 0
+                          : useVerticalUserSearch
+                          ? 280
                           : 106,
                       duration: FluffyThemes.animationDuration,
                       curve: FluffyThemes.animationCurve,
                       child: userSearchResult == null
                           ? null
+                          : useVerticalUserSearch
+                          ? ListView.separated(
+                              primary: false,
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              itemCount: userSearchResult.results.length,
+                              separatorBuilder: (context, i) => const Divider(
+                                height: 1,
+                                indent: 12,
+                                endIndent: 12,
+                              ),
+                              itemBuilder: (context, i) {
+                                final profile = userSearchResult.results[i];
+                                final title =
+                                    profile.displayName ??
+                                    profile.userId.localpart ??
+                                    L10n.of(context).unknownDevice;
+                                return _SearchListItemVertical(
+                                  title: title,
+                                  subtitle: profile.userId,
+                                  avatar: profile.avatarUrl,
+                                  onPressed: () => UserDialog.show(
+                                    context: context,
+                                    profile: profile,
+                                  ),
+                                );
+                              },
+                            )
                           : ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: userSearchResult.results.length,
@@ -138,13 +176,6 @@ class ChatListViewBody extends StatelessWidget {
                         children:
                             [
                                   ActiveFilter.allChats,
-
-                                  if (spaces.isNotEmpty &&
-                                      !AppSettings
-                                          .displayNavigationRail
-                                          .value &&
-                                      !FluffyThemes.isColumnMode(context))
-                                    ActiveFilter.spaces,
                                   ActiveFilter.unread,
                                   ActiveFilter.groups,
                                   ActiveFilter.messages,
@@ -324,4 +355,44 @@ class _SearchItem extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _SearchListItemVertical extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Uri? avatar;
+  final void Function() onPressed;
+
+  const _SearchListItemVertical({
+    required this.title,
+    required this.subtitle,
+    this.avatar,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      onTap: onPressed,
+      leading: Avatar(
+        mxContent: avatar,
+        name: title,
+        size: 40,
+      ),
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: const Icon(Icons.chevron_right_outlined, size: 18),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      visualDensity: const VisualDensity(horizontal: 0, vertical: -1),
+    );
+  }
 }

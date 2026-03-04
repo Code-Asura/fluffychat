@@ -8,6 +8,7 @@ import 'package:matrix/matrix_api_lite/utils/logs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fluffychat/utils/platform_infos.dart';
+import 'package:fluffychat/config/secmess_config.dart';
 
 enum AppSettings<T> {
   textMessageMaxLength<int>('textMessageMaxLength', 16384),
@@ -47,14 +48,23 @@ enum AppSettings<T> {
   ),
   displayChatDetailsColumn('chat.fluffy.display_chat_details_column', false),
   // AppConfig-mirrored settings
-  applicationName<String>('chat.fluffy.application_name', 'FluffyChat'),
-  defaultHomeserver<String>('chat.fluffy.default_homeserver', 'matrix.org'),
+  applicationName<String>(
+    'chat.fluffy.application_name',
+    SecMessConfig.appName,
+  ),
+  defaultHomeserver<String>(
+    'chat.fluffy.default_homeserver',
+    SecMessConfig.homeserverHost,
+  ),
   // colorSchemeSeed stored as ARGB int
   colorSchemeSeedInt<int>('chat.fluffy.color_scheme_seed', 0xFF5625BA),
   emojiSuggestionLocale<String>('emoji_suggestion_locale', ''),
   enableSoftLogout<bool>('chat.fluffy.enable_soft_logout', false),
   enableMatrixNativeOIDC<bool>('chat.fluffy.enable_matrix_native_oidc', false),
-  presetHomeserver<String>('chat.fluffy.preset_homeserver', ''),
+  presetHomeserver<String>(
+    'chat.fluffy.preset_homeserver',
+    SecMessConfig.homeserverHost,
+  ),
   welcomeText<String>('chat.fluffy.welcome_text', '');
 
   final String key;

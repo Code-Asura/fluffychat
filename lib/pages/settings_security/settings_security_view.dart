@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:fluffychat/config/app_config.dart';
+import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
@@ -145,8 +146,9 @@ class SettingsSecurityView extends StatelessWidget {
                       style: const TextStyle(fontFamily: 'RobotoMono'),
                     ),
                   ),
-                  if (capabilities?.mChangePassword?.enabled != false ||
-                      error != null)
+                  if (SecMessConfig.enablePasswordChange &&
+                      (capabilities?.mChangePassword?.enabled != false ||
+                          error != null))
                     ListTile(
                       leading: const Icon(Icons.password_outlined),
                       trailing: const Icon(Icons.chevron_right_outlined),
