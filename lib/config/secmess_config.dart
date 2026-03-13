@@ -1,11 +1,18 @@
 abstract class SecMessConfig {
   static const String appName = 'SecMess';
-  static const String homeserverHost = 'secmess.cloudpub.ru';
-  static const String homeserverUrl = 'https://secmess.cloudpub.ru';
+  static const String homeserverHost = String.fromEnvironment(
+    'SECMESS_HOMESERVER_HOST',
+    defaultValue: 'secmess.cloudpub.ru',
+  );
+  static const String homeserverUrl = String.fromEnvironment(
+    'SECMESS_HOMESERVER_URL',
+    defaultValue: 'https://secmess.cloudpub.ru',
+  );
 
   static const String keygenAuthMePath = '/keygen/auth/me';
   static const String keygenCreatePath = '/keygen/token/create';
   static const String keygenRedeemPath = '/keygen/token/redeem';
+  static const String keygenMasterKeyHeader = 'X-Master-Key';
   static const String qrTokenQueryParam = 'token';
 
   // In token-only auth flow we skip interactive cross-signing bootstrap (UIA),
@@ -19,6 +26,8 @@ abstract class SecMessConfig {
   static const bool enableHomeserverSettings = false;
   static const bool enablePasswordChange = false;
   static const bool enableCalls = false;
+  static const bool enableInviteContact = false;
+  static const bool enforceConfiguredHomeserver = true;
 
   // Chat scope: keep only text, static photos, emoji and reactions.
   static const bool enableChatStaticImages = true;

@@ -72,7 +72,10 @@ class _QrLoginPageState extends State<QrLoginPage> {
     final tokenFromQuery = uri?.queryParameters[SecMessConfig.qrTokenQueryParam]
         ?.trim();
     if (tokenFromQuery != null && tokenFromQuery.isNotEmpty) {
-      return tokenFromQuery;
+      if (_tokenPattern.hasMatch(tokenFromQuery)) {
+        return tokenFromQuery;
+      }
+      return null;
     }
 
     if (_tokenPattern.hasMatch(trimmed)) {
@@ -83,6 +86,9 @@ class _QrLoginPageState extends State<QrLoginPage> {
   }
 
   Uri _normalizeHomeserverUri(String? raw) {
+    if (SecMessConfig.enforceConfiguredHomeserver) {
+      return Uri.parse(SecMessConfig.homeserverUrl);
+    }
     if (raw == null || raw.trim().isEmpty) {
       return Uri.parse(SecMessConfig.homeserverUrl);
     }
@@ -98,18 +104,20 @@ class _QrLoginPageState extends State<QrLoginPage> {
     return token.startsWith(_matrixAccessTokenPrefix);
   }
 
-  Future<Map<String, dynamic>> _whoAmI(String accessToken) async {
-    final homeserver = Uri.parse(SecMessConfig.homeserverUrl);
+  Future<Map<String, dynamic>> _whoAmI(
+    String accessToken, {
+    Uri? homeserverUri,
+  }) async {
+    final homeserver = homeserverUri ?? Uri.parse(SecMessConfig.homeserverUrl);
     final whoAmIUri = homeserver.replace(path: _whoAmIPath);
     final response = await http
-        .get(
-          whoAmIUri,
-          headers: {'Authorization': 'Bearer $accessToken'},
-        )
+        .get(whoAmIUri, headers: {'Authorization': 'Bearer $accessToken'})
         .timeout(const Duration(seconds: 20));
 
     if (response.statusCode != 200) {
-      throw _QrLoginException('Access token is invalid (${response.statusCode}).');
+      throw _QrLoginException(
+        'Access token is invalid (${response.statusCode}).',
+      );
     }
 
     final decoded =
@@ -119,6 +127,26 @@ class _QrLoginPageState extends State<QrLoginPage> {
       throw const _QrLoginException('Invalid whoami response from homeserver.');
     }
     return decoded;
+  }
+
+  Future<String> _requireDeviceId({
+    required String accessToken,
+    required Uri homeserver,
+    String? currentDeviceId,
+  }) async {
+    final trimmed = currentDeviceId?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      return trimmed;
+    }
+
+    final whoami = await _whoAmI(accessToken, homeserverUri: homeserver);
+    final resolved = (whoami['device_id'] as String?)?.trim();
+    if (resolved == null || resolved.isEmpty) {
+      throw const _QrLoginException(
+        'This access token is not bound to a device.',
+      );
+    }
+    return resolved;
   }
 
   Future<_RedeemResult> _redeemInviteToken(String token) async {
@@ -169,7 +197,7 @@ class _QrLoginPageState extends State<QrLoginPage> {
     try {
       String userId;
       String accessToken;
-      String? deviceId;
+      String deviceId;
       Uri homeserver;
 
       if (_isMatrixAccessToken(token)) {
@@ -177,23 +205,25 @@ class _QrLoginPageState extends State<QrLoginPage> {
         setState(() {
           _statusText = 'Checking access token...';
         });
-        final whoami = await _whoAmI(token);
+        homeserver = Uri.parse(SecMessConfig.homeserverUrl);
+        final whoami = await _whoAmI(token, homeserverUri: homeserver);
         userId = whoami['user_id'] as String;
         accessToken = token;
-        deviceId = whoami['device_id'] as String?;
-        if (deviceId == null || deviceId.isEmpty) {
-          throw const _QrLoginException(
-            'This access token has no device binding. '
-            'Request a device-bound recovery token from admin.',
-          );
-        }
-        homeserver = Uri.parse(SecMessConfig.homeserverUrl);
+        deviceId = await _requireDeviceId(
+          accessToken: accessToken,
+          homeserver: homeserver,
+          currentDeviceId: whoami['device_id'] as String?,
+        );
       } else {
         final redeemResult = await _redeemInviteToken(token);
         userId = redeemResult.userId;
         accessToken = redeemResult.accessToken;
-        deviceId = redeemResult.deviceId;
         homeserver = _normalizeHomeserverUri(redeemResult.homeServer);
+        deviceId = await _requireDeviceId(
+          accessToken: accessToken,
+          homeserver: homeserver,
+          currentDeviceId: redeemResult.deviceId,
+        );
       }
 
       if (!mounted) return;
@@ -285,7 +315,7 @@ class _QrLoginPageState extends State<QrLoginPage> {
           const SizedBox(height: 8),
           TextButton(
             onPressed: _loading ? null : _openTokenLogin,
-            child: const Text('Войти по токену'),
+            child: const Text('Sign in with token'),
           ),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
@@ -311,7 +341,7 @@ class _QrLoginPageState extends State<QrLoginPage> {
                       const SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: _loading ? null : _submitManualToken,
-                        child: const Text('Войти'),
+                        child: const Text('Sign in'),
                       ),
                     ],
                   ),

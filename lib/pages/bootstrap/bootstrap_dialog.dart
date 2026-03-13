@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -89,6 +91,33 @@ class BootstrapDialogState extends State<BootstrapDialog> {
     if (success) _decryptLastEvents();
 
     context.canPop() ? context.pop(success) : context.go('/rooms');
+  }
+
+  Future<KeyVerification> _startVerificationWithBestOwnDevice() async {
+    await client.updateUserDeviceKeys();
+
+    final userId = client.userID;
+    if (userId == null) {
+      throw Exception('Missing current user id');
+    }
+
+    final ownDeviceKeys = client.userDeviceKeys[userId];
+    if (ownDeviceKeys == null) {
+      throw Exception('Own device keys are not loaded');
+    }
+
+    final devices = (await client.getDevices() ?? <Device>[])
+      ..removeWhere((device) => device.deviceId == client.deviceID)
+      ..sort((a, b) => (b.lastSeenTs ?? 0).compareTo(a.lastSeenTs ?? 0));
+
+    for (final device in devices) {
+      final key = ownDeviceKeys.deviceKeys[device.deviceId];
+      if (key == null) continue;
+      return key.startVerification();
+    }
+
+    // Fallback to previous behavior if no target key was resolved.
+    return ownDeviceKeys.startVerification();
   }
 
   void _decryptLastEvents() {
@@ -431,9 +460,7 @@ class BootstrapDialogState extends State<BootstrapDialog> {
                                 context: context,
                                 delay: false,
                                 future: () async {
-                                  await client.updateUserDeviceKeys();
-                                  return client.userDeviceKeys[client.userID!]!
-                                      .startVerification();
+                                  return _startVerificationWithBestOwnDevice();
                                 },
                               );
                               if (req.error != null) return;
@@ -457,7 +484,19 @@ class BootstrapDialogState extends State<BootstrapDialog> {
                                         .ssss
                                         .onSecretStored
                                         .stream
-                                        .first;
+                                        .first
+                                        .timeout(const Duration(seconds: 45));
+                                  }
+
+                                  final cachedAfterTransfer =
+                                      await client.encryption!.keyManager
+                                          .isCached() &&
+                                      await client.encryption!.crossSigning
+                                          .isCached();
+                                  if (!cachedAfterTransfer) {
+                                    throw TimeoutException(
+                                      'Secrets were not received from the other device in time.',
+                                    );
                                   }
                                   return;
                                 },

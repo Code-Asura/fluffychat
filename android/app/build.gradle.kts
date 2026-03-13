@@ -38,6 +38,8 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    val splitPerAbi = (project.findProperty("split-per-abi") as String?)?.toBoolean() == true
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -49,17 +51,13 @@ android {
     }
 
     signingConfigs {
-       create("release") {
-            keyAlias = "dummyAlias"
-            keyPassword = "dummyPassword"
-            storeFile = file("dummy.keystore")
-            storePassword = "dummyStorePassword"
-        }
+        create("release")
     }
 
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
-    if (keystorePropertiesFile.exists()) {
+    val hasReleaseKeystore = keystorePropertiesFile.exists()
+    if (hasReleaseKeystore) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
         signingConfigs.getByName("release").apply {
             keyAlias = keystoreProperties["keyAlias"] as String
@@ -75,14 +73,18 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        ndk { // Workaround for https://github.com/flutter/flutter/issues/162153#issuecomment-2612443642
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
+        // Workaround for https://github.com/flutter/flutter/issues/162153#issuecomment-2612443642
+        // When Flutter enables ABI splits (`--split-per-abi`), Gradle forbids using `abiFilters` too.
+        if (!splitPerAbi) {
+            ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86") }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")

@@ -7,6 +7,7 @@ import 'package:pretty_qr_code/pretty_qr_code.dart';
 
 import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/secmess_admin_master_key_cache.dart';
 
 class AdminInviteQrPage extends StatefulWidget {
   final String accessToken;
@@ -48,6 +49,57 @@ class _AdminInviteQrPageState extends State<AdminInviteQrPage> {
     return generic;
   }
 
+  bool _isMasterKeyError(String errorText) {
+    final lowered = errorText.toLowerCase();
+    return lowered.contains('master key');
+  }
+
+  Future<String?> _ensureMasterKey() async {
+    final cached = SecMessAdminMasterKeyCache.value;
+    if (cached != null && cached.isNotEmpty) {
+      return cached;
+    }
+
+    final controller = TextEditingController();
+    final key = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Master key required'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          obscureText: true,
+          enableSuggestions: false,
+          autocorrect: false,
+          decoration: const InputDecoration(
+            labelText: 'Master key',
+            border: OutlineInputBorder(),
+          ),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => Navigator.of(context).pop(controller.text),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (key == null || key.trim().isEmpty) {
+      return null;
+    }
+
+    SecMessAdminMasterKeyCache.set(key);
+    return SecMessAdminMasterKeyCache.value;
+  }
+
   Future<void> _generateQr() async {
     if (!mounted) return;
     setState(() {
@@ -56,11 +108,17 @@ class _AdminInviteQrPageState extends State<AdminInviteQrPage> {
     });
 
     try {
+      final masterKey = await _ensureMasterKey();
+      if (masterKey == null || masterKey.isEmpty) {
+        throw const _AdminInviteQrException('Master key is required.');
+      }
+
       final response = await http
           .post(
             _createUri,
             headers: {
               'Authorization': 'Bearer ${widget.accessToken}',
+              SecMessConfig.keygenMasterKeyHeader: masterKey,
               'Content-Type': 'application/json',
             },
             body: '{}',
@@ -68,7 +126,11 @@ class _AdminInviteQrPageState extends State<AdminInviteQrPage> {
           .timeout(const Duration(seconds: 25));
 
       if (response.statusCode != 200) {
-        throw _AdminInviteQrException(_extractBackendError(response));
+        final message = _extractBackendError(response);
+        if (response.statusCode == 401 && _isMasterKeyError(message)) {
+          SecMessAdminMasterKeyCache.clear();
+        }
+        throw _AdminInviteQrException(message);
       }
 
       final decoded =
@@ -116,7 +178,7 @@ class _AdminInviteQrPageState extends State<AdminInviteQrPage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Generate Invite QR'),
+        title: const Text('Generate QR code'),
       ),
       body: SafeArea(
         child: Center(

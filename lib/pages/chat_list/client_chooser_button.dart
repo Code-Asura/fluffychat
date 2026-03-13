@@ -13,6 +13,7 @@ import 'package:fluffychat/config/secmess_config.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/secmess/admin_invite_qr_page.dart';
+import 'package:fluffychat/utils/secmess_admin_master_key_cache.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/avatar.dart';
 import 'package:fluffychat/widgets/matrix.dart';
@@ -50,6 +51,7 @@ class _ClientChooserButtonState extends State<ClientChooserButton> {
     final userId = client.userID;
     final accessToken = client.accessToken;
     if (userId == null || accessToken == null || accessToken.isEmpty) {
+      SecMessAdminMasterKeyCache.clear();
       if (_canGenerateInviteQr) {
         setState(() => _canGenerateInviteQr = false);
       }
@@ -98,6 +100,9 @@ class _ClientChooserButtonState extends State<ClientChooserButton> {
       _canGenerateInviteQr = canGenerate;
       _roleLoading = false;
     });
+    if (!canGenerate) {
+      SecMessAdminMasterKeyCache.clear();
+    }
   }
 
   List<PopupMenuEntry<Object>> _bundleMenuItems(BuildContext context) {
@@ -131,16 +136,17 @@ class _ClientChooserButtonState extends State<ClientChooserButton> {
           ],
         ),
       ),
-      PopupMenuItem(
-        value: SettingsAction.invite,
-        child: Row(
-          children: [
-            Icon(Icons.adaptive.share_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).inviteContact),
-          ],
+      if (SecMessConfig.enableInviteContact)
+        PopupMenuItem(
+          value: SettingsAction.invite,
+          child: Row(
+            children: [
+              Icon(Icons.adaptive.share_outlined),
+              const SizedBox(width: 18),
+              Text(L10n.of(context).inviteContact),
+            ],
+          ),
         ),
-      ),
       PopupMenuItem(
         value: SettingsAction.archive,
         child: Row(
@@ -169,7 +175,7 @@ class _ClientChooserButtonState extends State<ClientChooserButton> {
             children: [
               Icon(Icons.qr_code_2_outlined),
               SizedBox(width: 18),
-              Text('Сгенерировать QR-код'),
+              Text('Generate QR code'),
             ],
           ),
         ),
@@ -289,6 +295,7 @@ class _ClientChooserButtonState extends State<ClientChooserButton> {
   Future<void> _clientSelected(Object object, BuildContext context) async {
     if (object is Client) {
       widget.controller.setActiveClient(object);
+      SecMessAdminMasterKeyCache.clear();
       _roleResolvedForUser = null;
       _roleLoading = false;
       if (_canGenerateInviteQr) {
@@ -297,6 +304,7 @@ class _ClientChooserButtonState extends State<ClientChooserButton> {
       _refreshInviteRole();
     } else if (object is String) {
       widget.controller.setActiveBundle(object);
+      SecMessAdminMasterKeyCache.clear();
       _roleResolvedForUser = null;
       _roleLoading = false;
       if (_canGenerateInviteQr) {
@@ -323,6 +331,9 @@ class _ClientChooserButtonState extends State<ClientChooserButton> {
           context.go('/rooms/newgroup');
           break;
         case SettingsAction.invite:
+          if (!SecMessConfig.enableInviteContact) {
+            return;
+          }
           FluffyShare.shareInviteLink(context);
           break;
         case SettingsAction.support:
